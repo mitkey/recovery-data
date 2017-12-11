@@ -34,6 +34,7 @@ captures/
 
 # Intellij
 *.iml
+.idea
 .idea/workspace.xml
 .idea/tasks.xml
 .idea/gradle.xml
@@ -41,7 +42,7 @@ captures/
 .idea/libraries
 
 # Keystore files
-*.jks
+# *.jks
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
