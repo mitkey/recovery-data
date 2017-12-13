@@ -11,35 +11,43 @@
     tools:context="tribalage.game.ingentuity.com.recoverdata.MainActivity">
 
     <LinearLayout
-        android:orientation="horizontal"
+        android:id="@+id/layout_head"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:id="@+id/layout_head">
+        android:orientation="horizontal">
 
         <Button
-            android:text="刷新"
+            android:id="@+id/btBackupCurrent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:onClick="onClickBackupCurrent"
+            android:text="备份" />
+
+        <Button
             android:id="@+id/btRefresh"
-            android:onClick="onClickRefresh"
-            android:layout_weight="1" />
-
-        <Button
-            android:text="恢复"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:onClick="onClickRefresh"
+            android:text="刷新" />
+
+        <Button
             android:id="@+id/btRecover"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:onClick="onClickRecover"
-            android:layout_weight="1" />
+            android:text="恢复" />
     </LinearLayout>
 
     <ListView
+        android:id="@+id/lvFiles"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/layout_head"
-        android:listSelector="@color/colorAccent"
-        android:id="@+id/lvFiles" />
+        android:listSelector="@color/colorAccent" />
 
 </RelativeLayout>
