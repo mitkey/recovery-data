@@ -10,7 +10,6 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -40,27 +39,33 @@ public class MainActivity extends AppCompatActivity {
     private static final String BasePath = "/data/data/com.tap4fun.brutalage_test";
 
     /**
+     * 最后备份名字
+     */
+    private static final String LastBackupName = "last-backup";
+
+    /**
      * 存储备份的文件夹名字
      */
     private static final String SaveBackupDirName = "Pictures/野蛮时代";
 
-    Button btnRefresh;
-    Button btnRecover;
-    ListView lvFiles;
-    ArrayAdapter<String> arrayAdapter;
+    private ListView lvFiles;
+    private ArrayAdapter<String> arrayAdapter;
+
+    private long pressedTime = 0;
 
     private String curSelectName = null;
-    private ProgressDialog dialog;
-    private long mPressedTime = 0;
-    private AsyncTask<Void, Void, Boolean> asyncTask;
+
+    private ProgressDialog dialogRestoreBackup;
+    private ProgressDialog dialogBackupCurrent;
+
+    private AsyncTask<Void, Void, Boolean> asyncRestoreBackupTask;
+    private AsyncTask<Void, Void, Boolean> asyncBackupCurrentTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        btnRefresh = (Button) findViewById(R.id.btRefresh);
-        btnRecover = (Button) findViewById(R.id.btRecover);
         lvFiles = (ListView) findViewById(R.id.lvFiles);
         lvFiles.setAdapter(arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1));
         lvFiles.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -70,21 +75,32 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //添加弹出的对话框
-        dialog = new ProgressDialog(this);
-        dialog.setTitle("提示");
-        dialog.setMessage("备份恢复中，请稍后···");
+        dialogRestoreBackup = new ProgressDialog(this);
+        dialogRestoreBackup.setTitle("操作提示");
+        dialogRestoreBackup.setMessage("备份数据恢复中，请稍后...");
+
+        dialogBackupCurrent = new ProgressDialog(this);
+        dialogBackupCurrent.setTitle("操作提示");
+        dialogBackupCurrent.setMessage("当前数据备份中，请稍后...");
     }
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (asyncTask != null) {
-            asyncTask.cancel(false);
+        if (asyncRestoreBackupTask != null) {
+            asyncRestoreBackupTask.cancel(false);
+            asyncRestoreBackupTask = null;
         }
-        if (dialog != null && dialog.isShowing()) {
-            dialog.dismiss();
+        if (asyncBackupCurrentTask != null) {
+            asyncBackupCurrentTask.cancel(false);
+            asyncBackupCurrentTask = null;
+        }
+        if (dialogRestoreBackup != null && dialogRestoreBackup.isShowing()) {
+            dialogRestoreBackup.dismiss();
+        }
+        if (dialogBackupCurrent != null && dialogBackupCurrent.isShowing()) {
+            dialogBackupCurrent.dismiss();
         }
     }
 
@@ -99,10 +115,10 @@ public class MainActivity extends AppCompatActivity {
     public void onBackPressed() {
         // 获取第一次按键时间
         long mNowTime = System.currentTimeMillis();
-        if ((mNowTime - mPressedTime) > 2000) {
+        if ((mNowTime - pressedTime) > 2000) {
             // 比较两次按键时间差
             Toasty.info(this, "再按一次退出程序").show();
-            mPressedTime = mNowTime;
+            pressedTime = mNowTime;
         } else {
             // 退出程序
             finish();
@@ -128,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
             Toasty.warning(MainActivity.this, "请先安装需要恢复数据的应用").show();
             return;
         }
-        asyncTask = new BackupTask().execute();
+        asyncRestoreBackupTask = new RestoreBackupTask().execute();
     }
 
     /**
@@ -168,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 检查系统中是否安装了某个应用
      */
-    public boolean isInstalled(final String packageName) {
+    private boolean isInstalled(final String packageName) {
         if (Strings.isNullOrEmpty(packageName)) {
             return false;
         }
@@ -182,19 +198,95 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * 异步任务执行
+     * 备份当前的
      */
-    private class BackupTask extends AsyncTask<Void, Void, Boolean> {
+    public void onClickBackupCurrent(View view) {
+        if (!isInstalled(AppPackageName)) {
+            Toasty.warning(MainActivity.this, "未安装需要备份数据的应用").show();
+            return;
+        }
+        if (!new File(BasePath).exists()) {
+            Toasty.warning(MainActivity.this, "无需备份,应用产生数据").show();
+            return;
+        }
+
+        asyncBackupCurrentTask = new BackupCurrentTask().execute();
+    }
+
+    private class BackupCurrentTask extends AsyncTask<Void, Void, Boolean> {
+
         @Override
-        //在界面上显示进度条
         protected void onPreExecute() {
-            dialog.show();
+            super.onPreExecute();
+            dialogBackupCurrent.show();
         }
 
         @Override
         protected void onCancelled() {
             super.onCancelled();
-            dialog.dismiss();
+            dialogBackupCurrent.dismiss();
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... params) {
+            try {
+                // 指令集
+                List<String> commands = Lists.newArrayList();
+
+
+                File targetSavePath = new File(getBackupFile(), LastBackupName);
+                if (targetSavePath.exists()) {
+                    // 若进行过最后备份，删除备份
+                    commands.add(String.format("rm -r %s", targetSavePath.getAbsolutePath()));
+                } else {
+                    // 若未进行最后备份，创建存储备份目录
+                    commands.add(String.format("mkdir -p %%s%s", targetSavePath.getAbsolutePath()));
+                }
+
+                // 杀死程序
+                commands.add(String.format("am force-stop %s", AppPackageName));
+
+                // 复制当前应用数据到备份目录
+                commands.add(String.format("cp -r %s %s", BasePath, targetSavePath.getAbsolutePath()));
+
+                // 执行
+                ShellUtils.CommandResult commandResult = ShellUtils.execCommand(commands, true);
+
+                Log.d("备份", commandResult.toString());
+                return true;
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            super.onPostExecute(result);
+
+            dialogBackupCurrent.dismiss();
+
+            if (result) {
+                Toasty.success(MainActivity.this, "备份成功", Toast.LENGTH_LONG).show();
+                updateAdapterData();
+            } else {
+                Toasty.error(MainActivity.this, "备份失败", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+
+    private class RestoreBackupTask extends AsyncTask<Void, Void, Boolean> {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            dialogRestoreBackup.show();
+        }
+
+        @Override
+        protected void onCancelled() {
+            super.onCancelled();
+            dialogRestoreBackup.dismiss();
         }
 
         @Override
@@ -230,7 +322,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Boolean result) {
             super.onPostExecute(result);
-            dialog.dismiss();
+
+            dialogRestoreBackup.dismiss();
+
             if (result) {
                 Toasty.success(MainActivity.this, String.format("恢复成功:%s", curSelectName), Toast.LENGTH_LONG).show();
             } else {
