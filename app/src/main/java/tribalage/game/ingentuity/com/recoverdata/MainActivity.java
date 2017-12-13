@@ -206,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (!new File(BasePath).exists()) {
-            Toasty.warning(MainActivity.this, "无需备份,应用产生数据").show();
+            Toasty.warning(MainActivity.this, "无需备份,应用未产生数据").show();
             return;
         }
 
@@ -233,25 +233,25 @@ public class MainActivity extends AppCompatActivity {
                 // 指令集
                 List<String> commands = Lists.newArrayList();
 
-
                 File targetSavePath = new File(getBackupFile(), LastBackupName);
                 if (targetSavePath.exists()) {
-                    // 若进行过最后备份，删除备份
-                    commands.add(String.format("rm -r %s", targetSavePath.getAbsolutePath()));
-                } else {
-                    // 若未进行最后备份，创建存储备份目录
-                    commands.add(String.format("mkdir -p %%s%s", targetSavePath.getAbsolutePath()));
+                    // 安全删除，避免 Device or resource busy
+                    String temp = targetSavePath.getAbsolutePath() + "-" + System.currentTimeMillis();
+                    // 先重命名，在删除
+                    commands.add(String.format("mv %s %s", targetSavePath.getAbsolutePath(), temp));
+                    commands.add(String.format("rm -r %s", temp));
                 }
 
                 // 杀死程序
                 commands.add(String.format("am force-stop %s", AppPackageName));
 
                 // 复制当前应用数据到备份目录
-                commands.add(String.format("cp -r %s %s", BasePath, targetSavePath.getAbsolutePath()));
+                commands.add(String.format("cp -rf %s/ %s/", BasePath, targetSavePath.getAbsolutePath()));
 
                 // 执行
                 ShellUtils.CommandResult commandResult = ShellUtils.execCommand(commands, true);
 
+                Log.d("cmd集", commands.toString());
                 Log.d("备份", commandResult.toString());
                 return true;
             } catch (Exception e) {
@@ -300,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
                     commands.add(String.format("rm -r %s", BasePath));
                 }
                 // 复制
-                commands.add(String.format("cp -r %s %s", new File(getBackupFile(), curSelectName).getAbsolutePath(), BasePath));
+                commands.add(String.format("cp -rf %s/ %s/", new File(getBackupFile(), curSelectName).getAbsolutePath(), BasePath));
                 // 修改权限
                 commands.add(String.format("chmod -R 777 %s", BasePath));
                 // 杀死程序
@@ -311,6 +311,7 @@ public class MainActivity extends AppCompatActivity {
                 // 执行
                 ShellUtils.CommandResult commandResult = ShellUtils.execCommand(commands, true);
 
+                Log.d("cmd集", commands.toString());
                 Log.d("备份", commandResult.toString());
                 return true;
             } catch (Exception e) {
