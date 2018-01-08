@@ -321,7 +321,7 @@ public class MainActivity extends AppCompatActivity {
                 ShellUtils.CommandResult commandResult = ShellUtils.execCommand(commands, true);
 
                 Log.d("cmd集", commands.toString());
-                Log.d("备份", commandResult.toString());
+                Log.d("恢复", commandResult.toString());
                 return true;
             } catch (Exception e) {
                 e.printStackTrace();
