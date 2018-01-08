@@ -15,8 +15,8 @@ android {
         applicationId "tribalage.game.ingentuity.com.recoverdata"
         minSdkVersion 15
         targetSdkVersion 25
-        versionCode 4
-        versionName "1.0.4"
+        versionCode 5
+        versionName "1.0.5"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
