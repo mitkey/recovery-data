@@ -50,4 +50,6 @@ dependencies {
     compile group: 'com.google.guava', name: 'guava', version: '23.5-android'
 
     compile 'com.github.GrenderG:Toasty:1.2.5'
+
+    compile 'com.bigkoo:alertview:1.0.3'
 }
