@@ -7,16 +7,21 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.bigkoo.alertview.AlertView;
+import com.bigkoo.alertview.OnItemClickListener;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import es.dmoral.toasty.Toasty;
@@ -39,11 +44,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String BasePath = "/data/data/com.tap4fun.brutalage_test";
 
     /**
-     * 最后备份名字
-     */
-    private static final String LastBackupName = "last-backup";
-
-    /**
      * 存储备份的文件夹名字
      */
     private static final String SaveBackupDirName = "Pictures/野蛮时代";
@@ -60,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
 
     private AsyncTask<Void, Void, Boolean> asyncRestoreBackupTask;
     private AsyncTask<Void, Void, Boolean> asyncBackupCurrentTask;
+
+    private AlertView alertView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
         dialogBackupCurrent.setMessage("当前数据备份中，请稍后...");
     }
 
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -98,9 +99,15 @@ public class MainActivity extends AppCompatActivity {
         }
         if (dialogRestoreBackup != null && dialogRestoreBackup.isShowing()) {
             dialogRestoreBackup.dismiss();
+            dialogRestoreBackup = null;
         }
         if (dialogBackupCurrent != null && dialogBackupCurrent.isShowing()) {
             dialogBackupCurrent.dismiss();
+            dialogBackupCurrent = null;
+        }
+        if (alertView != null && alertView.isShowing()) {
+            alertView.dismiss();
+            alertView = null;
         }
     }
 
@@ -110,19 +117,32 @@ public class MainActivity extends AppCompatActivity {
         updateAdapterData();
     }
 
-
     @Override
-    public void onBackPressed() {
-        // 获取第一次按键时间
-        long mNowTime = System.currentTimeMillis();
-        if ((mNowTime - pressedTime) > 2000) {
-            // 比较两次按键时间差
-            Toasty.info(this, "再按一次退出程序").show();
-            pressedTime = mNowTime;
-        } else {
-            // 退出程序
-            finish();
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (event.getRepeatCount() == 0 && alertView != null && alertView.isShowing()) {
+                alertView.dismiss();
+                ;
+                alertView = null;
+                // 终止传播
+                return true;
+            }
+
+            // 获取第一次按键时间
+            long mNowTime = System.currentTimeMillis();
+            if ((mNowTime - pressedTime) > 2000) {
+                // 比较两次按键时间差
+                Toasty.info(this, "再按一次退出程序").show();
+                pressedTime = mNowTime;
+            } else {
+                // 退出程序
+                finish();
+            }
+
+            // 终止传播
+            return true;
         }
+        return super.onKeyDown(keyCode, event);
     }
 
     /**
@@ -158,8 +178,17 @@ public class MainActivity extends AppCompatActivity {
     private void updateAdapterData() {
         // 更新 list view 的数据适配器
         arrayAdapter.clear();
+        arrayAdapter.addAll(obtainBackupNames());
+        arrayAdapter.notifyDataSetChanged();
+    }
 
-        // 获取存储备份路径下的内容列表转换为 listView 数据项
+    /**
+     * 获取备份名列表
+     */
+    private ImmutableList<String> obtainBackupNames() {
+        ArrayList<String> result = Lists.newArrayList();
+
+        // 获取存储备份路径下的备份列表
         File saveBackupDirFile = getBackupFile();
         // 目标存在且是目录
         if (saveBackupDirFile.exists() && saveBackupDirFile.isDirectory()) {
@@ -167,13 +196,12 @@ public class MainActivity extends AppCompatActivity {
             for (File childFile : saveBackupDirFile.listFiles()) {
                 // 是文件夹
                 if (childFile.isDirectory()) {
-                    arrayAdapter.add(childFile.getName());
+                    result.add(childFile.getName());
                 }
             }
         }
 
-        // 通知数据更新
-        arrayAdapter.notifyDataSetChanged();
+        return ImmutableList.copyOf(result);
     }
 
     /**
@@ -214,15 +242,40 @@ public class MainActivity extends AppCompatActivity {
             Toasty.warning(MainActivity.this, "无需备份,应用未产生数据").show();
             return;
         }
-
         if (asyncBackupCurrentTask != null) {
             asyncBackupCurrentTask.cancel(false);
             asyncBackupCurrentTask = null;
         }
-        asyncBackupCurrentTask = new BackupCurrentTask().execute();
+
+        if (alertView != null && alertView.isShowing()) {
+            alertView.dismiss();
+            alertView = null;
+        }
+
+        ImmutableList<String> temps = obtainBackupNames();
+        String[] items = null;
+        if (temps.isEmpty()) {
+            items = new String[]{"default"};
+        } else {
+            items = temps.toArray(new String[temps.size()]);
+        }
+        final String[] finalItems = items;
+        alertView = new AlertView("应用数据备份到...", null, null, null, items, this, AlertView.Style.ActionSheet, new OnItemClickListener() {
+            @Override
+            public void onItemClick(Object o, int position) {
+                asyncBackupCurrentTask = new BackupCurrentTask(finalItems[position]).execute();
+            }
+        }).setCancelable(true);
+        alertView.show();
     }
 
     private class BackupCurrentTask extends AsyncTask<Void, Void, Boolean> {
+
+        private String backupName;
+
+        public BackupCurrentTask(String backupName) {
+            this.backupName = backupName;
+        }
 
         @Override
         protected void onPreExecute() {
@@ -242,7 +295,7 @@ public class MainActivity extends AppCompatActivity {
                 // 指令集
                 List<String> commands = Lists.newArrayList();
 
-                File targetSavePath = new File(getBackupFile(), LastBackupName);
+                File targetSavePath = new File(getBackupFile(), backupName);
                 if (targetSavePath.exists()) {
                     // 安全删除，避免 Device or resource busy
                     String temp = targetSavePath.getAbsolutePath() + "-" + System.currentTimeMillis();
