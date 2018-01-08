@@ -260,10 +260,17 @@ public class MainActivity extends AppCompatActivity {
             items = temps.toArray(new String[temps.size()]);
         }
         final String[] finalItems = items;
-        alertView = new AlertView("应用数据备份到...", null, null, null, items, this, AlertView.Style.ActionSheet, new OnItemClickListener() {
+        alertView = new AlertView("应用数据备份到...", null, "取消备份", null, items, this, AlertView.Style.ActionSheet, new OnItemClickListener() {
             @Override
             public void onItemClick(Object o, int position) {
-                asyncBackupCurrentTask = new BackupCurrentTask(finalItems[position]).execute();
+                if (position != AlertView.CANCELPOSITION) {
+                    // 非取消按钮
+                    String strChooseName = finalItems[position];
+                    asyncBackupCurrentTask = new BackupCurrentTask(strChooseName).execute();
+                } else {
+                    // 取消按钮
+                    Toasty.warning(MainActivity.this, "取消备份").show();
+                }
             }
         }).setCancelable(true);
         alertView.show();
@@ -329,10 +336,10 @@ public class MainActivity extends AppCompatActivity {
             dialogBackupCurrent.dismiss();
 
             if (result) {
-                Toasty.success(MainActivity.this, "备份成功", Toast.LENGTH_LONG).show();
+                Toasty.success(MainActivity.this, String.format("备份到 %s 成功", backupName), Toast.LENGTH_LONG).show();
                 updateAdapterData();
             } else {
-                Toasty.error(MainActivity.this, "备份失败", Toast.LENGTH_SHORT).show();
+                Toasty.error(MainActivity.this, String.format("备份到 %s 失败", backupName), Toast.LENGTH_SHORT).show();
             }
         }
     }
