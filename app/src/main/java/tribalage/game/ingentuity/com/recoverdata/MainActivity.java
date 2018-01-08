@@ -144,6 +144,11 @@ public class MainActivity extends AppCompatActivity {
             Toasty.warning(MainActivity.this, "请先安装需要恢复数据的应用").show();
             return;
         }
+
+        if (asyncRestoreBackupTask != null) {
+            asyncRestoreBackupTask.cancel(false);
+            asyncRestoreBackupTask = null;
+        }
         asyncRestoreBackupTask = new RestoreBackupTask().execute();
     }
 
@@ -210,6 +215,10 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        if (asyncBackupCurrentTask != null) {
+            asyncBackupCurrentTask.cancel(false);
+            asyncBackupCurrentTask = null;
+        }
         asyncBackupCurrentTask = new BackupCurrentTask().execute();
     }
 
