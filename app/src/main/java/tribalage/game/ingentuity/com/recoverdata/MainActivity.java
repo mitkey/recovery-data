@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
     private AsyncTask<Void, Void, Boolean> asyncRestoreBackupTask;
     private AsyncTask<Void, Void, Boolean> asyncBackupCurrentTask;
 
-    private AlertView alertView;
+    private AlertView alertChooses;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,9 +105,9 @@ public class MainActivity extends AppCompatActivity {
             dialogBackupCurrent.dismiss();
             dialogBackupCurrent = null;
         }
-        if (alertView != null && alertView.isShowing()) {
-            alertView.dismiss();
-            alertView = null;
+        if (alertChooses != null && alertChooses.isShowing()) {
+            alertChooses.dismiss();
+            alertChooses = null;
         }
     }
 
@@ -120,10 +120,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (event.getRepeatCount() == 0 && alertView != null && alertView.isShowing()) {
-                alertView.dismiss();
+            if (event.getRepeatCount() == 0 && alertChooses != null && alertChooses.isShowing()) {
+                alertChooses.dismiss();
                 ;
-                alertView = null;
+                alertChooses = null;
                 // 终止传播
                 return true;
             }
@@ -247,9 +247,9 @@ public class MainActivity extends AppCompatActivity {
             asyncBackupCurrentTask = null;
         }
 
-        if (alertView != null && alertView.isShowing()) {
-            alertView.dismiss();
-            alertView = null;
+        if (alertChooses != null && alertChooses.isShowing()) {
+            alertChooses.dismiss();
+            alertChooses = null;
         }
 
         ImmutableList<String> temps = obtainBackupNames();
@@ -260,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
             items = temps.toArray(new String[temps.size()]);
         }
         final String[] finalItems = items;
-        alertView = new AlertView("应用数据备份到...", null, "取消备份", null, items, this, AlertView.Style.ActionSheet, new OnItemClickListener() {
+        alertChooses = new AlertView("应用数据备份到...", null, "取消备份", null, items, this, AlertView.Style.ActionSheet, new OnItemClickListener() {
             @Override
             public void onItemClick(Object o, int position) {
                 if (position != AlertView.CANCELPOSITION) {
@@ -273,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }).setCancelable(true);
-        alertView.show();
+        alertChooses.show();
     }
 
     private class BackupCurrentTask extends AsyncTask<Void, Void, Boolean> {
