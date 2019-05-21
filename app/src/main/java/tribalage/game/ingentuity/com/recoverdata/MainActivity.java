@@ -276,6 +276,26 @@ public class MainActivity extends AppCompatActivity {
         alertChooses.show();
     }
 
+    // 压缩
+    private String generateCommandByCompress(){
+
+        // TODO
+        // 压缩
+
+
+        String.format("tar -czpf /storage/emulated/0/s1111.tar.gz /data/data/com.tap4fun.brutalage_test");
+
+        return  null;
+    }
+
+    // 解压缩
+    private String generateCommandByUncompression(){
+
+        // TODO
+
+        return null;
+    }
+
     private class BackupCurrentTask extends AsyncTask<Void, Void, Boolean> {
 
         private String backupName;
